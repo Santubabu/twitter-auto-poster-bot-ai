@@ -25,7 +25,13 @@ async function run() {
 
   // Write your prompt here
   const prompt =
-    "generate a web development content, tips and tricks or something new or some rant or some advice as a tweet, it should not be vague and should be unique; under 280 characters and should be plain text, you can use emojis";
+    ",Generate a concise, opinionated tweet (max 280 characters) commenting on currently trending topics on Indian Twitter (X).
+Tone: sharp, relatable, slightly witty.
+Style: native Indian Twitter vibe (memes, cricket, politics, tech, culture, viral moments).
+Avoid hashtags overload (0–2 max).
+No emojis unless they add meaning.
+Make it feel like a real human reacting in the moment, not a news headline.
+Focus on commentary, observation, or a light rant—not reporting facts";
 
   const result = await model.generateContent(prompt);
   const response = await result.response;
