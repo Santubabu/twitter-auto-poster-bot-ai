@@ -1,5 +1,3 @@
-// By VishwaGauravIn (https://itsvg.in)
-
 const GenAI = require("@google/generative-ai");
 const { TwitterApi } = require("twitter-api-v2");
 const SECRETS = require("./SECRETS");
@@ -17,36 +15,56 @@ const generationConfig = {
 const genAI = new GenAI.GoogleGenerativeAI(SECRETS.GEMINI_API_KEY);
 
 async function run() {
-  // For text-only input, use the gemini-pro model
-  const model = genAI.getGenerativeModel({
-    model: "gemini-pro",
-    generationConfig,
-  });
+  try {
+    // Step 1: Get real current trends for India (WOEID 23424848 = India nationwide)
+    const trendsResponse = await twitterClient.v1.trendsPlace(23424848);
+    const trends = trendsResponse[0]?.trends || []; // Array of { name, tweet_volume, ... }
 
-  // Write your prompt here
-  const prompt =
-    ",Generate a concise, opinionated tweet (max 280 characters) commenting on currently trending topics on Indian Twitter (X).
+    // Take top 5 trends (filter out low-volume or non-relevant if needed)
+    const topTrends = trends
+      .slice(0, 5)
+      .map(t => t.name)
+      .join(", ");
+
+    console.log("Current Indian trends:", topTrends);
+
+    // Step 2: Build dynamic prompt with real trends
+    const prompt = `Generate a concise, opinionated tweet (max 280 characters) commenting on one or more of these currently trending topics on Indian X/Twitter: ${topTrends}.
+
 Tone: sharp, relatable, slightly witty.
 Style: native Indian Twitter vibe (memes, cricket, politics, tech, culture, viral moments).
 Avoid hashtags overload (0–2 max).
 No emojis unless they add meaning.
 Make it feel like a real human reacting in the moment, not a news headline.
-Focus on commentary, observation, or a light rant—not reporting facts";
+Focus on commentary, observation, or a light rant—not reporting facts.`;
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const text = response.text();
-  console.log(text);
-  sendTweet(text);
+    // Step 3: Generate tweet with Gemini
+    const model = genAI.getGenerativeModel({
+      model: "gemini-pro",
+      generationConfig,
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().trim();
+
+    console.log("Generated tweet:", text);
+
+    // Step 4: Post it
+    await sendTweet(text);
+  } catch (error) {
+    console.error("Error in run():", error);
+  }
 }
-
-run();
 
 async function sendTweet(tweetText) {
   try {
-    await twitterClient.v2.tweet(tweetText);
-    console.log("Tweet sent successfully!");
+    const posted = await twitterClient.v2.tweet(tweetText);
+    console.log("Tweet sent successfully! ID:", posted.data.id);
   } catch (error) {
-    console.error("Error sending tweet:", error);
+    console.error("Error sending tweet:", error?.data || error);
   }
 }
+
+// Run the bot
+run();
